@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { InstrumentSelector } from "./TradingScanner/InstrumentSelector";
-import { TimeframeSelector } from "./TradingScanner/TimeframeSelector";
-import { NotificationSettings } from "./TradingScanner/NotificationSettings";
-import { DivergenceAlerts } from "./DivergenceAlerts";
 
+// Base instruments without contract months
 const BASE_INSTRUMENTS = [
   {
     symbol: "MES", // E-mini S&P 500 Micro
@@ -54,12 +54,11 @@ const TIMEFRAMES = [
   "1d",
 ];
 
-interface TradingScannerProps {
-  onTimeframeChange?: (timeframe: string) => void;
-  onSymbolChange?: (symbol: string) => void;
-}
+// Get current year and next year for contract selection
+const currentYear = new Date().getFullYear();
+const years = [currentYear, currentYear + 1];
 
-export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingScannerProps) => {
+export const TradingScanner = () => {
   const [selectedInstruments, setSelectedInstruments] = useState<Array<{ symbol: string; contract: string }>>([]);
   const [selectedTimeframes, setSelectedTimeframes] = useState<string[]>([]);
   const [emailNotifications, setEmailNotifications] = useState(false);
@@ -67,22 +66,17 @@ export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingSca
   const [isScanning, setIsScanning] = useState(false);
   const { toast } = useToast();
 
-  const [divergenceSignals] = useState({
-    bullish: [{ time: Date.now(), confirmations: 3 }],
-    bearish: [{ time: Date.now() - 1000 * 60 * 5, confirmations: 4 }],
-  });
-
   const handleInstrumentSelect = (baseSymbol: string) => {
     const isCurrentlySelected = selectedInstruments.some(i => i.symbol === baseSymbol);
     
     if (isCurrentlySelected) {
       setSelectedInstruments(prev => prev.filter(i => i.symbol !== baseSymbol));
     } else {
+      // Default to the nearest active contract
       const instrument = BASE_INSTRUMENTS.find(i => i.symbol === baseSymbol);
       if (instrument) {
-        const defaultContract = `${instrument.months[0]}${new Date().getFullYear().toString().slice(-2)}`;
+        const defaultContract = `${instrument.months[0]}${currentYear.toString().slice(-2)}`;
         setSelectedInstruments(prev => [...prev, { symbol: baseSymbol, contract: defaultContract }]);
-        onSymbolChange?.(baseSymbol);
       }
     }
   };
@@ -97,19 +91,6 @@ export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingSca
     );
   };
 
-  const handleTimeframeSelect = (timeframe: string) => {
-    setSelectedTimeframes(prev => {
-      const newTimeframes = prev.includes(timeframe)
-        ? prev.filter(t => t !== timeframe)
-        : [...prev, timeframe];
-      
-      if (newTimeframes.length > 0) {
-        onTimeframeChange?.(newTimeframes[0]);
-      }
-      return newTimeframes;
-    });
-  };
-
   const handleStartScanning = () => {
     if (selectedInstruments.length === 0 || selectedTimeframes.length === 0) {
       toast({
@@ -121,6 +102,15 @@ export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingSca
     }
 
     setIsScanning(true);
+    console.log("Started scanning with:", {
+      instruments: selectedInstruments,
+      timeframes: selectedTimeframes,
+      notifications: {
+        email: emailNotifications,
+        telegram: telegramNotifications,
+      },
+    });
+
     toast({
       title: "Scanner Started",
       description: `Monitoring ${selectedInstruments.length} instruments across ${selectedTimeframes.length} timeframes.`,
@@ -137,30 +127,88 @@ export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingSca
 
   return (
     <div className="space-y-6">
-      <InstrumentSelector
-        instruments={BASE_INSTRUMENTS}
-        selectedInstruments={selectedInstruments}
-        onInstrumentSelect={handleInstrumentSelect}
-        onContractChange={handleContractChange}
-      />
+      <div className="space-y-4">
+        <div>
+          <Label>Select Futures Instruments</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+            {BASE_INSTRUMENTS.map((instrument) => (
+              <div key={instrument.symbol} className="flex flex-col space-y-2">
+                <Button
+                  variant={selectedInstruments.some(i => i.symbol === instrument.symbol) ? "default" : "outline"}
+                  onClick={() => handleInstrumentSelect(instrument.symbol)}
+                  className="w-full"
+                >
+                  {instrument.name}
+                </Button>
+                {selectedInstruments.some(i => i.symbol === instrument.symbol) && (
+                  <Select
+                    value={selectedInstruments.find(i => i.symbol === instrument.symbol)?.contract}
+                    onValueChange={(value) => handleContractChange(instrument.symbol, value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select contract" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map(year => (
+                        instrument.months.map(month => (
+                          <SelectItem 
+                            key={`${instrument.symbol}${month}${year.toString().slice(-2)}`}
+                            value={`${month}${year.toString().slice(-2)}`}
+                          >
+                            {`${month}${year.toString().slice(-2)}`}
+                          </SelectItem>
+                        ))
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
 
-      <TimeframeSelector
-        timeframes={TIMEFRAMES}
-        selectedTimeframes={selectedTimeframes}
-        onTimeframeSelect={handleTimeframeSelect}
-      />
+        <div>
+          <Label>Select Timeframes</Label>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 mt-2">
+            {TIMEFRAMES.map((timeframe) => (
+              <Button
+                key={timeframe}
+                variant={selectedTimeframes.includes(timeframe) ? "default" : "outline"}
+                onClick={() => {
+                  setSelectedTimeframes((prev) =>
+                    prev.includes(timeframe)
+                      ? prev.filter((t) => t !== timeframe)
+                      : [...prev, timeframe]
+                  );
+                }}
+                className="w-full"
+              >
+                {timeframe}
+              </Button>
+            ))}
+          </div>
+        </div>
 
-      <NotificationSettings
-        emailNotifications={emailNotifications}
-        telegramNotifications={telegramNotifications}
-        onEmailChange={setEmailNotifications}
-        onTelegramChange={setTelegramNotifications}
-      />
+        <div className="space-y-4 bg-secondary/20 p-4 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="email-notifications"
+              checked={emailNotifications}
+              onCheckedChange={setEmailNotifications}
+            />
+            <Label htmlFor="email-notifications">Email Notifications</Label>
+          </div>
 
-      <DivergenceAlerts
-        bullishSignals={divergenceSignals.bullish}
-        bearishSignals={divergenceSignals.bearish}
-      />
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="telegram-notifications"
+              checked={telegramNotifications}
+              onCheckedChange={setTelegramNotifications}
+            />
+            <Label htmlFor="telegram-notifications">Telegram Notifications</Label>
+          </div>
+        </div>
+      </div>
 
       <Button
         onClick={isScanning ? handleStopScanning : handleStartScanning}
@@ -173,4 +221,3 @@ export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingSca
     </div>
   );
 };
-
