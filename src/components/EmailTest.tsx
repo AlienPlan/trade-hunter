@@ -1,26 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const EmailTest = () => {
   const { toast } = useToast();
 
   const sendTestEmail = async () => {
     try {
-      // Send test email directly without auth
-      const response = await fetch("/api/send-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
           to: "alientrading007@gmail.com",
           subject: "Trade Hunter Test Email",
           text: "This is a test email from Trade Hunter. If you received this, your email notifications are working correctly!",
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to send test email");
+      if (error) {
+        throw error;
       }
 
       toast({
