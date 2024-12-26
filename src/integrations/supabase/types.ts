@@ -9,7 +9,78 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          notification_enabled: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id: string
+          notification_enabled?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          notification_enabled?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      "Trade Hunter": {
+        Row: {
+          created_at: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
+      trading_signals: {
+        Row: {
+          confirmations: number
+          created_at: string | null
+          id: number
+          instrument: string
+          price: number
+          signal_type: string
+          timeframe: string
+          user_id: string
+        }
+        Insert: {
+          confirmations: number
+          created_at?: string | null
+          id?: number
+          instrument: string
+          price: number
+          signal_type: string
+          timeframe: string
+          user_id: string
+        }
+        Update: {
+          confirmations?: number
+          created_at?: string | null
+          id?: number
+          instrument?: string
+          price?: number
+          signal_type?: string
+          timeframe?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

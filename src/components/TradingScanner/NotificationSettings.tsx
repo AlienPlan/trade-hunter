@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NotificationSettingsProps {
   emailNotifications: boolean;
@@ -21,7 +22,23 @@ export const NotificationSettings = ({
   const [email, setEmail] = useState("");
   const { toast } = useToast();
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const loadProfile = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, notification_enabled')
+        .single();
+
+      if (profile) {
+        setEmail(profile.email || '');
+        onEmailChange(profile.notification_enabled || false);
+      }
+    };
+
+    loadProfile();
+  }, [onEmailChange]);
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       toast({
@@ -32,11 +49,25 @@ export const NotificationSettings = ({
       return;
     }
 
-    // Save email to localStorage
-    localStorage.setItem("notificationEmail", email);
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        email: email,
+        notification_enabled: emailNotifications,
+      });
+
+    if (error) {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update notification settings.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
-      title: "Email Saved",
-      description: "You will receive notifications at this email address.",
+      title: "Settings Updated",
+      description: "Your notification settings have been saved.",
     });
   };
 
