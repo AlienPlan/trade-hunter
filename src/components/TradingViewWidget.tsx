@@ -5,7 +5,7 @@ interface TradingViewWidgetProps {
   symbol?: string;
 }
 
-const TradingViewWidget = ({ timeframe = "15", symbol = "COMEX:GC1!" }: TradingViewWidgetProps) => {
+export const TradingViewWidget = memo(({ timeframe = "15", symbol = "COMEX:GC1!" }: TradingViewWidgetProps) => {
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,6 +67,4 @@ const TradingViewWidget = ({ timeframe = "15", symbol = "COMEX:GC1!" }: TradingV
       style={{ height: "600px", width: "100%" }}
     />
   );
-};
-
-export default memo(TradingViewWidget);
+});
