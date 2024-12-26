@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TradingScanner } from "@/components/TradingScanner";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
+import { BacktestingPanel } from "@/components/BacktestingPanel";
 import { useState } from "react";
 
 const Index = () => {
@@ -43,6 +44,11 @@ const Index = () => {
           />
         </CardContent>
       </Card>
+
+      <BacktestingPanel
+        selectedInstrument={selectedSymbol}
+        selectedTimeframe={selectedTimeframe}
+      />
     </div>
   );
 };

@@ -9,6 +9,96 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      backtest_results: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: number
+          instrument: string
+          losing_trades: number
+          max_drawdown: number | null
+          profit_factor: number | null
+          start_date: string
+          strategy_params: Json | null
+          timeframe: string
+          total_return: number
+          total_trades: number
+          user_id: string | null
+          winning_trades: number
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: number
+          instrument: string
+          losing_trades: number
+          max_drawdown?: number | null
+          profit_factor?: number | null
+          start_date: string
+          strategy_params?: Json | null
+          timeframe: string
+          total_return: number
+          total_trades: number
+          user_id?: string | null
+          winning_trades: number
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: number
+          instrument?: string
+          losing_trades?: number
+          max_drawdown?: number | null
+          profit_factor?: number | null
+          start_date?: string
+          strategy_params?: Json | null
+          timeframe?: string
+          total_return?: number
+          total_trades?: number
+          user_id?: string | null
+          winning_trades?: number
+        }
+        Relationships: []
+      }
+      historical_prices: {
+        Row: {
+          close: number
+          created_at: string | null
+          high: number
+          id: number
+          instrument: string
+          low: number
+          open: number
+          timeframe: string
+          timestamp: string
+          volume: number | null
+        }
+        Insert: {
+          close: number
+          created_at?: string | null
+          high: number
+          id?: number
+          instrument: string
+          low: number
+          open: number
+          timeframe: string
+          timestamp: string
+          volume?: number | null
+        }
+        Update: {
+          close?: number
+          created_at?: string | null
+          high?: number
+          id?: number
+          instrument?: string
+          low?: number
+          open?: number
+          timeframe?: string
+          timestamp?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
