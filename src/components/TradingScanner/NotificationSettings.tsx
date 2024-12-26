@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { EmailTest } from "@/components/EmailTest";
 
 interface NotificationSettingsProps {
   emailNotifications: boolean;
@@ -24,9 +25,13 @@ export const NotificationSettings = ({
 
   useEffect(() => {
     const loadProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('email, notification_enabled')
+        .eq('id', user.id)
         .single();
 
       if (profile) {
@@ -40,6 +45,17 @@ export const NotificationSettings = ({
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to update your notification settings.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!email) {
       toast({
         title: "Email Required",
@@ -54,7 +70,8 @@ export const NotificationSettings = ({
       .update({
         email: email,
         notification_enabled: emailNotifications,
-      });
+      })
+      .eq('id', user.id);
 
     if (error) {
       toast({
@@ -95,6 +112,7 @@ export const NotificationSettings = ({
             <Button type="submit" variant="secondary" size="sm">
               Save Email
             </Button>
+            <EmailTest />
           </div>
         )}
 

@@ -61,15 +61,15 @@ const AuthPage = () => {
               button: 'auth-button',
               input: 'auth-input',
             },
-            // Handle errors through the theme
             style: {
               message: {
                 color: 'red',
               }
             }
           }}
-          providers={[]}
+          providers={["google"]}
           redirectTo={window.location.origin}
+          view="sign_in"
         />
       </div>
     </div>
