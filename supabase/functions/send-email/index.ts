@@ -36,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
             to: [{ email: emailRequest.to }],
           },
         ],
-        from: { email: "notifications@tradehunter.com" },
+        from: { email: "alientrading007@gmail.com" },
         subject: emailRequest.subject,
         content: [
           {
