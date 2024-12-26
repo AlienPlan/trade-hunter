@@ -18,10 +18,16 @@ export const BacktestingPanel = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<BacktestResult[]>([]);
+  const [stats, setStats] = useState<{
+    divergences: { bullish: number; bearish: number };
+    signals: { bullish: number; bearish: number };
+    trades: number;
+  } | null>(null);
   const { toast } = useToast();
 
   const runBacktest = async () => {
     setIsLoading(true);
+    setStats(null);
     try {
       const { data: historicalData, error: fetchError } = await supabase
         .from("historical_prices")
@@ -61,6 +67,19 @@ export const BacktestingPanel = ({
 
       const trades = simulateTrades(historicalData, signals);
       console.log("Generated trades:", trades.length);
+
+      // Update stats for UI display
+      setStats({
+        divergences: {
+          bullish: divergences.bullish.length,
+          bearish: divergences.bearish.length
+        },
+        signals: {
+          bullish: confirmedSignals.bullish.length,
+          bearish: confirmedSignals.bearish.length
+        },
+        trades: trades.length
+      });
 
       if (trades.length === 0) {
         toast({
@@ -149,6 +168,23 @@ export const BacktestingPanel = ({
             {isLoading ? "Running..." : "Run Backtest"}
           </Button>
         </div>
+
+        {stats && (
+          <div className="mt-4 space-y-2 p-4 bg-muted rounded-lg">
+            <h3 className="font-semibold">Analysis Statistics:</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p>Bullish Divergences: {stats.divergences.bullish}</p>
+                <p>Bearish Divergences: {stats.divergences.bearish}</p>
+              </div>
+              <div>
+                <p>Confirmed Bullish Signals: {stats.signals.bullish}</p>
+                <p>Confirmed Bearish Signals: {stats.signals.bearish}</p>
+              </div>
+            </div>
+            <p className="font-medium">Total Trades Generated: {stats.trades}</p>
+          </div>
+        )}
 
         <BacktestResults results={results} />
       </CardContent>
