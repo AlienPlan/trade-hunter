@@ -1,6 +1,7 @@
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DivergenceSignal {
   time: number;
@@ -16,8 +17,12 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
   const { toast } = useToast();
 
   const sendEmailNotification = async (title: string, description: string) => {
-    const email = localStorage.getItem("notificationEmail");
-    if (!email) return;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, notification_enabled')
+      .single();
+
+    if (!profile?.notification_enabled || !profile?.email) return;
 
     try {
       const response = await fetch("/api/send-email", {
@@ -26,7 +31,7 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          to: email,
+          to: profile.email,
           subject: title,
           text: description,
         }),
@@ -45,10 +50,31 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
     }
   };
 
+  const storeSignal = async (signal: DivergenceSignal, type: 'bullish' | 'bearish') => {
+    const { error } = await supabase
+      .from('trading_signals')
+      .insert({
+        signal_type: type,
+        confirmations: signal.confirmations,
+        price: 0, // You'll need to add the actual price here
+        instrument: 'default', // Update with actual instrument
+        timeframe: '1h', // Update with actual timeframe
+      });
+
+    if (error) {
+      console.error('Error storing signal:', error);
+      toast({
+        title: "Storage Error",
+        description: "Failed to store trading signal",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     // Show toast and send email for new signals
-    const showSignalToasts = () => {
-      bullishSignals.forEach(signal => {
+    const showSignalToasts = async () => {
+      for (const signal of bullishSignals) {
         const title = "Bullish Divergence Detected";
         const description = `${signal.confirmations} Stochastic indicators confirm this signal`;
         
@@ -57,10 +83,11 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
           description,
         });
 
-        sendEmailNotification(title, description);
-      });
+        await sendEmailNotification(title, description);
+        await storeSignal(signal, 'bullish');
+      }
 
-      bearishSignals.forEach(signal => {
+      for (const signal of bearishSignals) {
         const title = "Bearish Divergence Detected";
         const description = `${signal.confirmations} Stochastic indicators confirm this signal`;
         
@@ -70,8 +97,9 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
           variant: "destructive",
         });
 
-        sendEmailNotification(title, description);
-      });
+        await sendEmailNotification(title, description);
+        await storeSignal(signal, 'bearish');
+      }
     };
 
     showSignalToasts();
