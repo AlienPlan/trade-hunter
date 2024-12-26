@@ -8,46 +8,50 @@ import { DivergenceAlerts } from "./DivergenceAlerts";
 
 const BASE_INSTRUMENTS = [
   {
-    symbol: "ES", // E-mini S&P 500
+    symbol: "MES", // E-mini S&P 500 Micro
     name: "E-mini S&P 500",
-    months: ["H", "M", "U", "Z"], // March, June, September, December
-    exchange: "CME"
+    months: ["H", "M", "U", "Z"] // March, June, September, December
   },
   {
-    symbol: "MES", // Micro E-mini S&P 500
-    name: "Micro E-mini S&P 500",
-    months: ["H", "M", "U", "Z"], // March, June, September, December
-    exchange: "CME"
+    symbol: "ES", // E-mini S&P 500
+    name: "E-mini S&P 500 (Full)",
+    months: ["H", "M", "U", "Z"]
   },
   {
     symbol: "GC", // Gold Futures
     name: "Gold Futures",
-    months: ["G", "J", "M", "Q", "V", "Z"], // February, April, June, August, October, December
-    exchange: "COMEX"
+    months: ["G", "J", "M", "Q", "V", "Z"] // February, April, June, August, October, December
+  },
+  {
+    symbol: "SI", // Silver Futures
+    name: "Silver Futures",
+    months: ["H", "K", "N", "U", "Z"] // March, May, July, September, December
+  },
+  {
+    symbol: "CL", // Crude Oil Futures
+    name: "Crude Oil Futures",
+    months: ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"] // All months
+  },
+  {
+    symbol: "BTC", // Bitcoin Futures
+    name: "Bitcoin Futures",
+    months: ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"] // All months
   },
   {
     symbol: "NQ", // E-mini NASDAQ-100
     name: "E-mini NASDAQ-100",
-    months: ["H", "M", "U", "Z"], // March, June, September, December
-    exchange: "CME"
-  },
-  {
-    symbol: "MNQ", // Micro E-mini NASDAQ-100
-    name: "Micro E-mini NASDAQ-100",
-    months: ["H", "M", "U", "Z"], // March, June, September, December
-    exchange: "CME"
+    months: ["H", "M", "U", "Z"] // March, June, September, December
   }
 ];
 
 const TIMEFRAMES = [
   "3m",
   "5m",
-  "15m",
-  "30m",
+  "12m",
+  "25m",
   "1h",
   "4h",
   "1d",
-  "1w",
 ];
 
 interface TradingScannerProps {
@@ -169,3 +173,4 @@ export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingSca
     </div>
   );
 };
+

@@ -1,70 +1,125 @@
-import { memo, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+
+declare global {
+  interface Window {
+    TradingView: any;
+  }
+}
 
 interface TradingViewWidgetProps {
   timeframe?: string;
   symbol?: string;
 }
 
-export const TradingViewWidget = memo(({ timeframe = "15", symbol = "COMEX:GC1!" }: TradingViewWidgetProps) => {
-  const container = useRef<HTMLDivElement>(null);
-
+export const TradingViewWidget = ({ timeframe = "D", symbol = "ES1!" }: TradingViewWidgetProps) => {
   useEffect(() => {
-    if (container.current) {
-      const script = document.createElement("script");
-      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-      script.type = "text/javascript";
-      script.async = true;
-      script.innerHTML = JSON.stringify({
-        autosize: true,
-        symbol: symbol,
-        interval: timeframe,
-        timezone: "America/Toronto",
-        theme: "dark",
-        style: "1",
-        locale: "en",
-        withdateranges: true,
-        hide_side_toolbar: false,
-        allow_symbol_change: true,
-        details: true,
-        calendar: false,
-        studies: [
-          "STD;Stochastic"
-        ],
-        support_host: "https://www.tradingview.com"
-      });
-      
-      // Clean up previous script if it exists
-      container.current.innerHTML = '';
-      
-      // Create widget container
-      const widgetContainer = document.createElement("div");
-      widgetContainer.className = "tradingview-widget-container__widget";
-      widgetContainer.style.height = "calc(100% - 32px)";
-      widgetContainer.style.width = "100%";
-      
-      // Create copyright element
-      const copyright = document.createElement("div");
-      copyright.className = "tradingview-widget-copyright";
-      copyright.innerHTML = '<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a>';
-      
-      // Append elements
-      container.current.appendChild(widgetContainer);
-      container.current.appendChild(copyright);
-      container.current.appendChild(script);
-    }
+    // Convert our timeframe format to TradingView format
+    const tvTimeframe = convertTimeframe(timeframe);
+    
+    // Convert symbol to TradingView futures format
+    const tvSymbol = convertSymbolToTradingView(symbol);
+    
+    // Create the script element
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/tv.js';
+    script.async = true;
+    script.onload = () => {
+      if (window.TradingView) {
+        new window.TradingView.widget({
+          width: '100%',
+          height: 600,
+          symbol: tvSymbol,
+          interval: tvTimeframe,
+          timezone: "Etc/UTC",
+          theme: "dark",
+          style: "1",
+          locale: "en",
+          toolbar_bg: "#f1f3f6",
+          enable_publishing: false,
+          allow_symbol_change: true,
+          studies: [
+            "STD;Stochastic RSI@tv-basicstudies",
+            "STD;Stochastic@tv-basicstudies",
+            {
+              id: "STD;Stochastic",
+              inputs: { 
+                "%k": 60,
+                "%d": 10,
+                "smooth": 3
+              }
+            },
+            {
+              id: "STD;Stochastic",
+              inputs: { 
+                "%k": 40,
+                "%d": 4,
+                "smooth": 3
+              }
+            },
+            {
+              id: "STD;Stochastic",
+              inputs: { 
+                "%k": 9,
+                "%d": 3,
+                "smooth": 3
+              }
+            }
+          ],
+          container_id: "tradingview_chart"
+        });
+      }
+    };
+    document.head.appendChild(script);
 
     return () => {
-      if (container.current) {
-        container.current.innerHTML = '';
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+      const container = document.getElementById("tradingview_chart");
+      if (container) {
+        container.innerHTML = '';
       }
     };
   }, [timeframe, symbol]);
 
   return (
-    <div 
-      className="tradingview-widget-container" 
-      ref={container} 
-      style={{ height: "600px", width: "100%" }}
-    />
+    <div className="w-full">
+      <div id="tradingview_chart" className="w-full" />
+    </div>
   );
-});
+};
+
+// Convert our timeframe format to TradingView format
+const convertTimeframe = (timeframe: string): string => {
+  const conversions: { [key: string]: string } = {
+    "1m": "1",
+    "3m": "3",
+    "5m": "5",
+    "12m": "15",
+    "25m": "30",
+    "1h": "60",
+    "4h": "240",
+    "1d": "D",
+    "1w": "W"
+  };
+  return conversions[timeframe] || "D";
+};
+
+// Convert our symbol format to TradingView futures format
+const convertSymbolToTradingView = (symbol: string): string => {
+  // Map base symbols to their TradingView exchange:symbol format
+  const symbolMap: { [key: string]: string } = {
+    "ES": "CME_MINI:ES1!", // E-mini S&P 500
+    "MES": "CME_MICRO:MES1!", // Micro E-mini S&P 500
+    "NQ": "CME_MINI:NQ1!", // E-mini NASDAQ-100
+    "GC": "COMEX:GC1!", // Gold Futures
+    "SI": "COMEX:SI1!", // Silver Futures
+    "CL": "NYMEX:CL1!", // Crude Oil Futures
+    "BTC": "CME:BTC1!", // Bitcoin Futures
+  };
+
+  // Extract base symbol (remove any contract month/year)
+  const baseSymbol = symbol.replace(/[A-Z]\d{2}$/, '');
+  
+  return symbolMap[baseSymbol] || `CME:${symbol}1!`; // Default to CME if not found
+};
