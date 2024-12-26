@@ -52,9 +52,9 @@ const TIMEFRAMES = [
   "1h",
   "4h",
   "1d",
+  "1w",
 ];
 
-// Get current year and next year for contract selection
 const currentYear = new Date().getFullYear();
 const years = [currentYear, currentYear + 1];
 
