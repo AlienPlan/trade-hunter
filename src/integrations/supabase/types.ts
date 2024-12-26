@@ -138,6 +138,39 @@ export type Database = {
         }
         Relationships: []
       }
+      trading_platform_config: {
+        Row: {
+          api_key: string | null
+          api_secret: string | null
+          created_at: string | null
+          id: number
+          is_active: boolean | null
+          passphrase: string | null
+          platform_name: string
+          user_id: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          api_secret?: string | null
+          created_at?: string | null
+          id?: number
+          is_active?: boolean | null
+          passphrase?: string | null
+          platform_name: string
+          user_id?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          api_secret?: string | null
+          created_at?: string | null
+          id?: number
+          is_active?: boolean | null
+          passphrase?: string | null
+          platform_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       trading_signals: {
         Row: {
           confirmations: number
