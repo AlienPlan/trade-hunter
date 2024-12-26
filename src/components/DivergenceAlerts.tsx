@@ -51,6 +51,14 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
   };
 
   const storeSignal = async (signal: DivergenceSignal, type: 'bullish' | 'bearish') => {
+    // Get the current user's ID
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('No authenticated user found');
+      return;
+    }
+
     const { error } = await supabase
       .from('trading_signals')
       .insert({
@@ -59,6 +67,7 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
         price: 0, // You'll need to add the actual price here
         instrument: 'default', // Update with actual instrument
         timeframe: '1h', // Update with actual timeframe
+        user_id: user.id // Add the user_id field
       });
 
     if (error) {
