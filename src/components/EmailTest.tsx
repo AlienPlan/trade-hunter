@@ -16,6 +16,7 @@ export const EmailTest = () => {
       });
 
       if (error) {
+        console.error("Error sending test email:", error);
         throw error;
       }
 
@@ -23,11 +24,11 @@ export const EmailTest = () => {
         title: "Success",
         description: "Test email sent successfully!",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending test email:", error);
       toast({
         title: "Error",
-        description: "Failed to send test email. Please check the console for details.",
+        description: error.message || "Failed to send test email. Please check the console for details.",
         variant: "destructive",
       });
     }

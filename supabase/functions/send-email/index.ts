@@ -21,6 +21,11 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    if (!SENDGRID_API_KEY) {
+      console.error("SendGrid API key is not configured");
+      throw new Error("SendGrid API key is not configured");
+    }
+
     const emailRequest: EmailRequest = await req.json();
     console.log("Sending email to:", emailRequest.to);
     
