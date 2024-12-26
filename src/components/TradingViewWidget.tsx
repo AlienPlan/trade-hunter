@@ -6,8 +6,16 @@ declare global {
   }
 }
 
-export const TradingViewWidget = () => {
+interface TradingViewWidgetProps {
+  timeframe?: string;
+  symbol?: string;
+}
+
+export const TradingViewWidget = ({ timeframe = "D", symbol = "CME:ES1!" }: TradingViewWidgetProps) => {
   useEffect(() => {
+    // Convert our timeframe format to TradingView format
+    const tvTimeframe = convertTimeframe(timeframe);
+    
     // Create the script element
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/tv.js';
@@ -17,8 +25,8 @@ export const TradingViewWidget = () => {
         new window.TradingView.widget({
           width: '100%',
           height: 600,
-          symbol: "CME:ES1!",
-          interval: "D",
+          symbol: symbol,
+          interval: tvTimeframe,
           timezone: "Etc/UTC",
           theme: "dark",
           style: "1",
@@ -27,10 +35,32 @@ export const TradingViewWidget = () => {
           enable_publishing: false,
           allow_symbol_change: true,
           studies: [
-            "STD;Stochastic", // 14-3 (default)
-            "STD;Stochastic@tv-basicstudies-60", // 60-10
-            "STD;Stochastic@tv-basicstudies-40", // 40-4
-            "STD;Stochastic@tv-basicstudies-9",  // 9-3
+            "STD;Stochastic RSI@tv-basicstudies", // Default Stochastic RSI
+            "STD;Stochastic@tv-basicstudies", // Default Stochastic (14,3,3)
+            {
+              id: "STD;Stochastic",
+              inputs: { 
+                "%k": 60,
+                "%d": 10,
+                "smooth": 3
+              }
+            },
+            {
+              id: "STD;Stochastic",
+              inputs: { 
+                "%k": 40,
+                "%d": 4,
+                "smooth": 3
+              }
+            },
+            {
+              id: "STD;Stochastic",
+              inputs: { 
+                "%k": 9,
+                "%d": 3,
+                "smooth": 3
+              }
+            }
           ],
           container_id: "tradingview_chart"
         });
@@ -40,13 +70,35 @@ export const TradingViewWidget = () => {
 
     return () => {
       // Cleanup
-      document.head.removeChild(script);
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+      // Clean up the container
+      const container = document.getElementById("tradingview_chart");
+      if (container) {
+        container.innerHTML = '';
+      }
     };
-  }, []);
+  }, [timeframe, symbol]); // Re-initialize when timeframe or symbol changes
 
   return (
     <div className="w-full">
       <div id="tradingview_chart" className="w-full" />
     </div>
   );
+};
+
+// Convert our timeframe format to TradingView format
+const convertTimeframe = (timeframe: string): string => {
+  const conversions: { [key: string]: string } = {
+    "3m": "3",
+    "5m": "5",
+    "12m": "15",
+    "25m": "30",
+    "1h": "60",
+    "4h": "240",
+    "1d": "D",
+    "1w": "W"
+  };
+  return conversions[timeframe] || "D"; // Default to daily if timeframe not found
 };

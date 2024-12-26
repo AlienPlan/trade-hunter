@@ -55,7 +55,12 @@ const TIMEFRAMES = [
   "1w",
 ];
 
-export const TradingScanner = () => {
+interface TradingScannerProps {
+  onTimeframeChange?: (timeframe: string) => void;
+  onSymbolChange?: (symbol: string) => void;
+}
+
+export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingScannerProps) => {
   const [selectedInstruments, setSelectedInstruments] = useState<Array<{ symbol: string; contract: string }>>([]);
   const [selectedTimeframes, setSelectedTimeframes] = useState<string[]>([]);
   const [emailNotifications, setEmailNotifications] = useState(false);
@@ -63,7 +68,6 @@ export const TradingScanner = () => {
   const [isScanning, setIsScanning] = useState(false);
   const { toast } = useToast();
 
-  // Mock data for demonstration - replace with real data from your market data provider
   const [divergenceSignals] = useState({
     bullish: [{ time: Date.now(), confirmations: 3 }],
     bearish: [{ time: Date.now() - 1000 * 60 * 5, confirmations: 4 }],
@@ -79,6 +83,7 @@ export const TradingScanner = () => {
       if (instrument) {
         const defaultContract = `${instrument.months[0]}${new Date().getFullYear().toString().slice(-2)}`;
         setSelectedInstruments(prev => [...prev, { symbol: baseSymbol, contract: defaultContract }]);
+        onSymbolChange?.(baseSymbol);
       }
     }
   };
@@ -94,11 +99,16 @@ export const TradingScanner = () => {
   };
 
   const handleTimeframeSelect = (timeframe: string) => {
-    setSelectedTimeframes(prev =>
-      prev.includes(timeframe)
+    setSelectedTimeframes(prev => {
+      const newTimeframes = prev.includes(timeframe)
         ? prev.filter(t => t !== timeframe)
-        : [...prev, timeframe]
-    );
+        : [...prev, timeframe];
+      
+      if (newTimeframes.length > 0) {
+        onTimeframeChange?.(newTimeframes[0]);
+      }
+      return newTimeframes;
+    });
   };
 
   const handleStartScanning = () => {
