@@ -20,7 +20,7 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
     const { data: profile } = await supabase
       .from('profiles')
       .select('email, notification_enabled')
-      .single();
+      .maybeSingle();
 
     if (!profile?.notification_enabled || !profile?.email) return;
 
@@ -51,7 +51,6 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
   };
 
   const storeSignal = async (signal: DivergenceSignal, type: 'bullish' | 'bearish') => {
-    // Get the current user's ID
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
@@ -64,10 +63,10 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
       .insert({
         signal_type: type,
         confirmations: signal.confirmations,
-        price: 0, // You'll need to add the actual price here
-        instrument: 'default', // Update with actual instrument
-        timeframe: '1h', // Update with actual timeframe
-        user_id: user.id // Add the user_id field
+        price: 0,
+        instrument: 'default',
+        timeframe: '1h',
+        user_id: user.id
       });
 
     if (error) {
@@ -81,7 +80,6 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
   };
 
   useEffect(() => {
-    // Show toast and send email for new signals
     const showSignalToasts = async () => {
       for (const signal of bullishSignals) {
         const title = "Bullish Divergence Detected";
