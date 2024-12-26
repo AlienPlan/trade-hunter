@@ -50,7 +50,7 @@ const calculateStochastic = (data: any[], index: number, period: number): number
   return ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
 };
 
-export const findDivergence = (rawData: any[], lookbackPeriod: number = 10) => {
+export const findDivergence = (rawData: any[], lookbackPeriod: number = 5) => {
   console.log("Processing data for divergences:", rawData.length, "points");
   
   const divergences = {
@@ -74,7 +74,7 @@ export const findDivergence = (rawData: any[], lookbackPeriod: number = 10) => {
 
   console.log("Calculated stochastics for all points");
 
-  // Look for divergences
+  // Look for divergences with more sensitive thresholds
   for (let i = lookbackPeriod; i < data.length; i++) {
     const currentPrice = data[i].price;
     const previousPrice = data[i - lookbackPeriod].price;
@@ -83,7 +83,8 @@ export const findDivergence = (rawData: any[], lookbackPeriod: number = 10) => {
     const previousStoch = data[i - lookbackPeriod].stoch14;
 
     // Bullish divergence: price makes lower low but oscillator makes higher low
-    if (currentPrice < previousPrice && currentStoch > previousStoch && currentStoch < 20) {
+    // More sensitive threshold (30 instead of 20)
+    if (currentPrice < previousPrice && currentStoch > previousStoch && currentStoch < 30) {
       console.log("Found bullish divergence at", data[i].timestamp);
       divergences.bullish.push({
         time: data[i].timestamp,
@@ -93,7 +94,8 @@ export const findDivergence = (rawData: any[], lookbackPeriod: number = 10) => {
     }
     
     // Bearish divergence: price makes higher high but oscillator makes lower high
-    if (currentPrice > previousPrice && currentStoch < previousStoch && currentStoch > 80) {
+    // More sensitive threshold (70 instead of 80)
+    if (currentPrice > previousPrice && currentStoch < previousStoch && currentStoch > 70) {
       console.log("Found bearish divergence at", data[i].timestamp);
       divergences.bearish.push({
         time: data[i].timestamp,
