@@ -15,10 +15,10 @@ const INSTRUMENTS = [
 ];
 
 const TIMEFRAMES = [
-  "1m",
+  "3m",
   "5m",
-  "15m",
-  "30m",
+  "12m",
+  "25m",
   "1h",
   "4h",
   "1d",
