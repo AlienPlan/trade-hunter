@@ -1,12 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TradingScanner } from "@/components/TradingScanner";
-import { KuCoinChart } from "@/components/KuCoinChart";
+import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { BacktestingPanel } from "@/components/BacktestingPanel";
 import { useState } from "react";
 
 const Index = () => {
-  const [selectedTimeframe, setSelectedTimeframe] = useState("1h");
-  const [selectedSymbol, setSelectedSymbol] = useState("BTC-USDT");
+  const [selectedTimeframe, setSelectedTimeframe] = useState("1d");
+  const [selectedSymbol, setSelectedSymbol] = useState("CME:ES1!");
 
   const handleTimeframeChange = (timeframe: string) => {
     setSelectedTimeframe(timeframe);
@@ -20,13 +20,13 @@ const Index = () => {
     <div className="container mx-auto p-4 space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>KuCoin Trading Chart</CardTitle>
+          <CardTitle>Trading Chart</CardTitle>
           <CardDescription>
-            Real-time crypto price chart with volume and technical indicators
+            Advanced chart with multiple Stochastic indicators for technical analysis
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <KuCoinChart timeframe={selectedTimeframe} symbol={selectedSymbol} />
+          <TradingViewWidget timeframe={selectedTimeframe} symbol={selectedSymbol} />
         </CardContent>
       </Card>
 

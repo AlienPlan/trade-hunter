@@ -20,95 +20,60 @@ interface Trade {
 interface DivergenceSignal {
   time: string;
   type: string;
-  price: number;
 }
 
 interface ConfirmedSignal {
   time: string;
   confirmations: number;
-  price: number;
 }
 
-const calculateStochastic = (data: any[], index: number, period: number): number => {
-  if (index < period - 1) return 50; // Default value for initial periods
-  
-  const currentClose = data[index].close;
-  let highestHigh = data[index].high;
-  let lowestLow = data[index].low;
-  
-  // Find highest high and lowest low over the period
-  for (let i = 0; i < period; i++) {
-    const currentPrice = data[index - i];
-    highestHigh = Math.max(highestHigh, currentPrice.high);
-    lowestLow = Math.min(lowestLow, currentPrice.low);
-  }
-  
-  // Avoid division by zero
-  if (highestHigh === lowestLow) return 50;
-  
-  // Calculate %K (basic stochastic)
-  return ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+export const calculateStochastics = (data: any[]) => {
+  return data.map(candle => ({
+    timestamp: candle.timestamp,
+    price: candle.close,
+    stoch9: calculateStochastic(candle, 9),
+    stoch14: calculateStochastic(candle, 14),
+    stoch40: calculateStochastic(candle, 40),
+    stoch60: calculateStochastic(candle, 60)
+  }));
 };
 
-export const findDivergence = (rawData: any[], lookbackPeriod: number = 5) => {
-  console.log("Processing data for divergences:", rawData.length, "points");
+const calculateStochastic = (candle: any, period: number) => {
+  // Simplified stochastic calculation for demo
+  return ((candle.close - candle.low) / (candle.high - candle.low)) * 100;
+};
+
+export const findDivergence = (rawData: any[], lookbackPeriod: number = 10) => {
+  const data = calculateStochastics(rawData);
   
   const divergences = {
     bullish: [] as DivergenceSignal[],
     bearish: [] as DivergenceSignal[]
   };
 
-  // Need at least lookbackPeriod + period for calculation
-  if (rawData.length < lookbackPeriod + 14) {
-    console.log("Not enough data points for divergence calculation");
-    return divergences;
-  }
-
-  // Calculate stochastics for each point
-  const data = rawData.map((candle, index) => ({
-    timestamp: candle.timestamp,
-    price: candle.close,
-    stoch14: calculateStochastic(rawData, index, 14),
-    stoch40: calculateStochastic(rawData, index, 40)
-  }));
-
-  console.log("Calculated stochastics for all points");
-
-  // Look for divergences with more sensitive thresholds
   for (let i = lookbackPeriod; i < data.length; i++) {
     const currentPrice = data[i].price;
     const previousPrice = data[i - lookbackPeriod].price;
     
-    const currentStoch = data[i].stoch14;
-    const previousStoch = data[i - lookbackPeriod].stoch14;
+    ['stoch9', 'stoch14', 'stoch40', 'stoch60'].forEach(indicator => {
+      const currentStoch = data[i][indicator as keyof PricePoint];
+      const previousStoch = data[i - lookbackPeriod][indicator as keyof PricePoint];
 
-    // Bullish divergence: price makes lower low but oscillator makes higher low
-    // More sensitive threshold (30 instead of 20)
-    if (currentPrice < previousPrice && currentStoch > previousStoch && currentStoch < 30) {
-      console.log("Found bullish divergence at", data[i].timestamp);
-      divergences.bullish.push({
-        time: data[i].timestamp,
-        type: "Bullish",
-        price: currentPrice
-      });
-    }
-    
-    // Bearish divergence: price makes higher high but oscillator makes lower high
-    // More sensitive threshold (70 instead of 80)
-    if (currentPrice > previousPrice && currentStoch < previousStoch && currentStoch > 70) {
-      console.log("Found bearish divergence at", data[i].timestamp);
-      divergences.bearish.push({
-        time: data[i].timestamp,
-        type: "Bearish",
-        price: currentPrice
-      });
-    }
+      if (currentPrice < previousPrice && currentStoch > previousStoch) {
+        divergences.bullish.push({
+          time: data[i].timestamp,
+          type: `Bullish (${indicator})`
+        });
+      }
+      
+      if (currentPrice > previousPrice && currentStoch < previousStoch) {
+        divergences.bearish.push({
+          time: data[i].timestamp,
+          type: `Bearish (${indicator})`
+        });
+      }
+    });
   }
-
-  console.log("Divergence detection complete:", {
-    bullish: divergences.bullish.length,
-    bearish: divergences.bearish.length
-  });
 
   return divergences;
 };
@@ -117,34 +82,32 @@ export const checkMultipleStochConfirmation = (
   divergences: ReturnType<typeof findDivergence>,
   minConfirmations: number = 2
 ) => {
-  console.log("Checking for multiple stochastic confirmations");
-  
   const confirmedSignals = {
     bullish: [] as ConfirmedSignal[],
     bearish: [] as ConfirmedSignal[]
   };
 
-  // Process bullish signals
-  divergences.bullish.forEach(signal => {
-    confirmedSignals.bullish.push({
-      time: signal.time,
-      confirmations: 1, // We're using a single confirmation for now
-      price: signal.price
-    });
+  const groupedBullish = new Map<string, number>();
+  const groupedBearish = new Map<string, number>();
+
+  divergences.bullish.forEach(({ time }) => {
+    groupedBullish.set(time, (groupedBullish.get(time) || 0) + 1);
   });
 
-  // Process bearish signals
-  divergences.bearish.forEach(signal => {
-    confirmedSignals.bearish.push({
-      time: signal.time,
-      confirmations: 1, // We're using a single confirmation for now
-      price: signal.price
-    });
+  divergences.bearish.forEach(({ time }) => {
+    groupedBearish.set(time, (groupedBearish.get(time) || 0) + 1);
   });
 
-  console.log("Confirmation check complete:", {
-    bullish: confirmedSignals.bullish.length,
-    bearish: confirmedSignals.bearish.length
+  groupedBullish.forEach((confirmations, time) => {
+    if (confirmations >= minConfirmations) {
+      confirmedSignals.bullish.push({ time, confirmations });
+    }
+  });
+
+  groupedBearish.forEach((confirmations, time) => {
+    if (confirmations >= minConfirmations) {
+      confirmedSignals.bearish.push({ time, confirmations });
+    }
   });
 
   return confirmedSignals;

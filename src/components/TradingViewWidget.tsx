@@ -92,7 +92,6 @@ export const TradingViewWidget = ({ timeframe = "D", symbol = "ES1!" }: TradingV
 // Convert our timeframe format to TradingView format
 const convertTimeframe = (timeframe: string): string => {
   const conversions: { [key: string]: string } = {
-    "1m": "1",
     "3m": "3",
     "5m": "5",
     "12m": "15",

@@ -52,6 +52,7 @@ const TIMEFRAMES = [
   "1h",
   "4h",
   "1d",
+  "1w",
 ];
 
 interface TradingScannerProps {
@@ -173,4 +174,3 @@ export const TradingScanner = ({ onTimeframeChange, onSymbolChange }: TradingSca
     </div>
   );
 };
-

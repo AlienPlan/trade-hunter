@@ -4,10 +4,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { findDivergence, checkMultipleStochConfirmation, calculatePerformanceMetrics } from "@/utils/divergenceUtils";
-import { BacktestResults } from "./Backtesting/BacktestResults";
-import { simulateTrades } from "./Backtesting/TradeSimulator";
-import { processSignals } from "./Backtesting/SignalProcessor";
-import type { BacktestResult } from "./Backtesting/types";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+interface BacktestResult {
+  instrument: string;
+  timeframe: string;
+  start_date: string;
+  end_date: string;
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  profit_factor: number;
+  total_return: number;
+  max_drawdown: number;
+  sharpe_ratio?: number;
+  average_win?: number;
+  average_loss?: number;
+  expectancy?: number;
+}
 
 export const BacktestingPanel = ({
   selectedInstrument,
@@ -18,16 +39,10 @@ export const BacktestingPanel = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<BacktestResult[]>([]);
-  const [stats, setStats] = useState<{
-    divergences: { bullish: number; bearish: number };
-    signals: { bullish: number; bearish: number };
-    trades: number;
-  } | null>(null);
   const { toast } = useToast();
 
   const runBacktest = async () => {
     setIsLoading(true);
-    setStats(null);
     try {
       const { data: historicalData, error: fetchError } = await supabase
         .from("historical_prices")
@@ -46,55 +61,18 @@ export const BacktestingPanel = ({
         return;
       }
 
-      console.log("Historical data loaded:", historicalData.length, "records");
-
       // Process the data through the divergence detection
       const divergences = findDivergence(historicalData);
-      console.log("Divergences found:", {
-        bullish: divergences.bullish.length,
-        bearish: divergences.bearish.length
-      });
-
       const confirmedSignals = checkMultipleStochConfirmation(divergences);
-      console.log("Confirmed signals:", {
-        bullish: confirmedSignals.bullish.length,
-        bearish: confirmedSignals.bearish.length
-      });
 
-      // Process signals and simulate trades
-      const signals = processSignals(confirmedSignals);
-      console.log("Processed signals:", signals.length);
+      // Simulate trades based on signals
+      const trades = simulateTrades(historicalData, confirmedSignals);
+      const metrics = calculatePerformanceMetrics(trades);
 
-      const trades = simulateTrades(historicalData, signals);
-      console.log("Generated trades:", trades.length);
-
-      // Update stats for UI display
-      setStats({
-        divergences: {
-          bullish: divergences.bullish.length,
-          bearish: divergences.bearish.length
-        },
-        signals: {
-          bullish: confirmedSignals.bullish.length,
-          bearish: confirmedSignals.bearish.length
-        },
-        trades: trades.length
-      });
-
-      if (trades.length === 0) {
+      if (!metrics) {
         toast({
           title: "No trades generated",
           description: "The strategy did not generate any trades in the selected period.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const metrics = calculatePerformanceMetrics(trades);
-      if (!metrics) {
-        toast({
-          title: "Calculation error",
-          description: "Could not calculate performance metrics.",
           variant: "destructive",
         });
         return;
@@ -135,7 +113,7 @@ export const BacktestingPanel = ({
 
       toast({
         title: "Backtest completed",
-        description: `Generated ${trades.length} trades with ${metrics.winningTrades} winners.`,
+        description: "Results have been calculated and stored.",
       });
     } catch (error) {
       console.error("Backtest error:", error);
@@ -147,6 +125,61 @@ export const BacktestingPanel = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const simulateTrades = (historicalData: any[], signals: any) => {
+    const trades = [];
+    let position = null;
+
+    for (let i = 0; i < historicalData.length; i++) {
+      const candle = historicalData[i];
+      
+      // Check for entry signals
+      const bullishSignal = signals.bullish.find(s => s.time === candle.timestamp);
+      const bearishSignal = signals.bearish.find(s => s.time === candle.timestamp);
+
+      if (!position && bullishSignal) {
+        position = {
+          type: 'long',
+          entryPrice: candle.close,
+          entryTime: candle.timestamp
+        };
+      } else if (!position && bearishSignal) {
+        position = {
+          type: 'short',
+          entryPrice: candle.close,
+          entryTime: candle.timestamp
+        };
+      }
+      // Simple exit strategy: close position after opposite signal or fixed bars
+      else if (position) {
+        const barsHeld = i - historicalData.findIndex(d => d.timestamp === position.entryTime);
+        const oppositeSignal = (position.type === 'long' && bearishSignal) || 
+                             (position.type === 'short' && bullishSignal);
+        
+        if (oppositeSignal || barsHeld >= 10) {
+          const exitPrice = candle.close;
+          const pnl = position.type === 'long' 
+            ? exitPrice - position.entryPrice
+            : position.entryPrice - exitPrice;
+          const pnlPercent = (pnl / position.entryPrice) * 100;
+
+          trades.push({
+            entryTime: position.entryTime,
+            exitTime: candle.timestamp,
+            entryPrice: position.entryPrice,
+            exitPrice: exitPrice,
+            type: position.type,
+            pnl,
+            pnlPercent
+          });
+
+          position = null;
+        }
+      }
+    }
+
+    return trades;
   };
 
   return (
@@ -169,24 +202,40 @@ export const BacktestingPanel = ({
           </Button>
         </div>
 
-        {stats && (
-          <div className="mt-4 space-y-2 p-4 bg-muted rounded-lg">
-            <h3 className="font-semibold">Analysis Statistics:</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p>Bullish Divergences: {stats.divergences.bullish}</p>
-                <p>Bearish Divergences: {stats.divergences.bearish}</p>
-              </div>
-              <div>
-                <p>Confirmed Bullish Signals: {stats.signals.bullish}</p>
-                <p>Confirmed Bearish Signals: {stats.signals.bearish}</p>
-              </div>
-            </div>
-            <p className="font-medium">Total Trades Generated: {stats.trades}</p>
-          </div>
+        {results.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Instrument</TableHead>
+                <TableHead>Timeframe</TableHead>
+                <TableHead>Total Trades</TableHead>
+                <TableHead>Win Rate</TableHead>
+                <TableHead>Profit Factor</TableHead>
+                <TableHead>Total Return</TableHead>
+                <TableHead>Max Drawdown</TableHead>
+                <TableHead>Sharpe Ratio</TableHead>
+                <TableHead>Expectancy</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {results.map((result, index) => (
+                <TableRow key={index}>
+                  <TableCell>{result.instrument}</TableCell>
+                  <TableCell>{result.timeframe}</TableCell>
+                  <TableCell>{result.total_trades}</TableCell>
+                  <TableCell>
+                    {((result.winning_trades / result.total_trades) * 100).toFixed(1)}%
+                  </TableCell>
+                  <TableCell>{result.profit_factor?.toFixed(2) || 'N/A'}</TableCell>
+                  <TableCell>{result.total_return.toFixed(2)}%</TableCell>
+                  <TableCell>{result.max_drawdown?.toFixed(2)}%</TableCell>
+                  <TableCell>{result.sharpe_ratio?.toFixed(2) || 'N/A'}</TableCell>
+                  <TableCell>{result.expectancy?.toFixed(2) || 'N/A'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
-
-        <BacktestResults results={results} />
       </CardContent>
     </Card>
   );
