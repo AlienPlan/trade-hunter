@@ -2,16 +2,46 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-const INSTRUMENTS = [
-  "MESH2025", // E-mini S&P 500
-  "ESH2025", // E-mini S&P 500 (alternative ticker)
-  "GCH2025", // Gold Futures
-  "SIH2025", // Silver Futures
-  "CLH2025", // Crude Oil Futures
-  "BTCF2025", // Bitcoin Futures
-  "NQH2025", // E-mini NASDAQ-100
+// Base instruments without contract months
+const BASE_INSTRUMENTS = [
+  {
+    symbol: "MES", // E-mini S&P 500 Micro
+    name: "E-mini S&P 500",
+    months: ["H", "M", "U", "Z"] // March, June, September, December
+  },
+  {
+    symbol: "ES", // E-mini S&P 500
+    name: "E-mini S&P 500 (Full)",
+    months: ["H", "M", "U", "Z"]
+  },
+  {
+    symbol: "GC", // Gold Futures
+    name: "Gold Futures",
+    months: ["G", "J", "M", "Q", "V", "Z"] // February, April, June, August, October, December
+  },
+  {
+    symbol: "SI", // Silver Futures
+    name: "Silver Futures",
+    months: ["H", "K", "N", "U", "Z"] // March, May, July, September, December
+  },
+  {
+    symbol: "CL", // Crude Oil Futures
+    name: "Crude Oil Futures",
+    months: ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"] // All months
+  },
+  {
+    symbol: "BTC", // Bitcoin Futures
+    name: "Bitcoin Futures",
+    months: ["F", "G", "H", "J", "K", "M", "N", "Q", "U", "V", "X", "Z"] // All months
+  },
+  {
+    symbol: "NQ", // E-mini NASDAQ-100
+    name: "E-mini NASDAQ-100",
+    months: ["H", "M", "U", "Z"] // March, June, September, December
+  }
 ];
 
 const TIMEFRAMES = [
@@ -24,13 +54,42 @@ const TIMEFRAMES = [
   "1d",
 ];
 
+// Get current year and next year for contract selection
+const currentYear = new Date().getFullYear();
+const years = [currentYear, currentYear + 1];
+
 export const TradingScanner = () => {
-  const [selectedInstruments, setSelectedInstruments] = useState<string[]>([]);
+  const [selectedInstruments, setSelectedInstruments] = useState<Array<{ symbol: string; contract: string }>>([]);
   const [selectedTimeframes, setSelectedTimeframes] = useState<string[]>([]);
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [telegramNotifications, setTelegramNotifications] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const { toast } = useToast();
+
+  const handleInstrumentSelect = (baseSymbol: string) => {
+    const isCurrentlySelected = selectedInstruments.some(i => i.symbol === baseSymbol);
+    
+    if (isCurrentlySelected) {
+      setSelectedInstruments(prev => prev.filter(i => i.symbol !== baseSymbol));
+    } else {
+      // Default to the nearest active contract
+      const instrument = BASE_INSTRUMENTS.find(i => i.symbol === baseSymbol);
+      if (instrument) {
+        const defaultContract = `${instrument.months[0]}${currentYear.toString().slice(-2)}`;
+        setSelectedInstruments(prev => [...prev, { symbol: baseSymbol, contract: defaultContract }]);
+      }
+    }
+  };
+
+  const handleContractChange = (baseSymbol: string, newContract: string) => {
+    setSelectedInstruments(prev => 
+      prev.map(i => 
+        i.symbol === baseSymbol 
+          ? { ...i, contract: newContract }
+          : i
+      )
+    );
+  };
 
   const handleStartScanning = () => {
     if (selectedInstruments.length === 0 || selectedTimeframes.length === 0) {
@@ -71,22 +130,39 @@ export const TradingScanner = () => {
       <div className="space-y-4">
         <div>
           <Label>Select Futures Instruments</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-2">
-            {INSTRUMENTS.map((instrument) => (
-              <Button
-                key={instrument}
-                variant={selectedInstruments.includes(instrument) ? "default" : "outline"}
-                onClick={() => {
-                  setSelectedInstruments((prev) =>
-                    prev.includes(instrument)
-                      ? prev.filter((i) => i !== instrument)
-                      : [...prev, instrument]
-                  );
-                }}
-                className="w-full"
-              >
-                {instrument}
-              </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+            {BASE_INSTRUMENTS.map((instrument) => (
+              <div key={instrument.symbol} className="flex flex-col space-y-2">
+                <Button
+                  variant={selectedInstruments.some(i => i.symbol === instrument.symbol) ? "default" : "outline"}
+                  onClick={() => handleInstrumentSelect(instrument.symbol)}
+                  className="w-full"
+                >
+                  {instrument.name}
+                </Button>
+                {selectedInstruments.some(i => i.symbol === instrument.symbol) && (
+                  <Select
+                    value={selectedInstruments.find(i => i.symbol === instrument.symbol)?.contract}
+                    onValueChange={(value) => handleContractChange(instrument.symbol, value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select contract" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map(year => (
+                        instrument.months.map(month => (
+                          <SelectItem 
+                            key={`${instrument.symbol}${month}${year.toString().slice(-2)}`}
+                            value={`${month}${year.toString().slice(-2)}`}
+                          >
+                            {`${month}${year.toString().slice(-2)}`}
+                          </SelectItem>
+                        ))
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             ))}
           </div>
         </div>
