@@ -11,10 +11,13 @@ interface TradingViewWidgetProps {
   symbol?: string;
 }
 
-export const TradingViewWidget = ({ timeframe = "D", symbol = "CME:ES1!" }: TradingViewWidgetProps) => {
+export const TradingViewWidget = ({ timeframe = "D", symbol = "ES1!" }: TradingViewWidgetProps) => {
   useEffect(() => {
     // Convert our timeframe format to TradingView format
     const tvTimeframe = convertTimeframe(timeframe);
+    
+    // Convert symbol to TradingView futures format
+    const tvSymbol = convertSymbolToTradingView(symbol);
     
     // Create the script element
     const script = document.createElement('script');
@@ -25,7 +28,7 @@ export const TradingViewWidget = ({ timeframe = "D", symbol = "CME:ES1!" }: Trad
         new window.TradingView.widget({
           width: '100%',
           height: 600,
-          symbol: symbol,
+          symbol: tvSymbol,
           interval: tvTimeframe,
           timezone: "Etc/UTC",
           theme: "dark",
@@ -35,8 +38,8 @@ export const TradingViewWidget = ({ timeframe = "D", symbol = "CME:ES1!" }: Trad
           enable_publishing: false,
           allow_symbol_change: true,
           studies: [
-            "STD;Stochastic RSI@tv-basicstudies", // Default Stochastic RSI
-            "STD;Stochastic@tv-basicstudies", // Default Stochastic (14,3,3)
+            "STD;Stochastic RSI@tv-basicstudies",
+            "STD;Stochastic@tv-basicstudies",
             {
               id: "STD;Stochastic",
               inputs: { 
@@ -69,17 +72,15 @@ export const TradingViewWidget = ({ timeframe = "D", symbol = "CME:ES1!" }: Trad
     document.head.appendChild(script);
 
     return () => {
-      // Cleanup
       if (document.head.contains(script)) {
         document.head.removeChild(script);
       }
-      // Clean up the container
       const container = document.getElementById("tradingview_chart");
       if (container) {
         container.innerHTML = '';
       }
     };
-  }, [timeframe, symbol]); // Re-initialize when timeframe or symbol changes
+  }, [timeframe, symbol]);
 
   return (
     <div className="w-full">
@@ -100,5 +101,24 @@ const convertTimeframe = (timeframe: string): string => {
     "1d": "D",
     "1w": "W"
   };
-  return conversions[timeframe] || "D"; // Default to daily if timeframe not found
+  return conversions[timeframe] || "D";
+};
+
+// Convert our symbol format to TradingView futures format
+const convertSymbolToTradingView = (symbol: string): string => {
+  // Map base symbols to their TradingView exchange:symbol format
+  const symbolMap: { [key: string]: string } = {
+    "ES": "CME_MINI:ES1!", // E-mini S&P 500
+    "MES": "CME_MICRO:MES1!", // Micro E-mini S&P 500
+    "NQ": "CME_MINI:NQ1!", // E-mini NASDAQ-100
+    "GC": "COMEX:GC1!", // Gold Futures
+    "SI": "COMEX:SI1!", // Silver Futures
+    "CL": "NYMEX:CL1!", // Crude Oil Futures
+    "BTC": "CME:BTC1!", // Bitcoin Futures
+  };
+
+  // Extract base symbol (remove any contract month/year)
+  const baseSymbol = symbol.replace(/[A-Z]\d{2}$/, '');
+  
+  return symbolMap[baseSymbol] || `CME:${symbol}1!`; // Default to CME if not found
 };
