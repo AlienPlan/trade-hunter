@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { findDivergence, checkMultipleStochConfirmation } from "@/utils/divergenceUtils";
+import { findDivergence, checkMultipleStochConfirmation, calculatePerformanceMetrics } from "@/utils/divergenceUtils";
 import {
   Table,
   TableBody,
@@ -24,6 +24,10 @@ interface BacktestResult {
   profit_factor: number;
   total_return: number;
   max_drawdown: number;
+  sharpe_ratio?: number;
+  average_win?: number;
+  average_loss?: number;
+  expectancy?: number;
 }
 
 export const BacktestingPanel = ({
@@ -40,7 +44,6 @@ export const BacktestingPanel = ({
   const runBacktest = async () => {
     setIsLoading(true);
     try {
-      // Fetch historical data
       const { data: historicalData, error: fetchError } = await supabase
         .from("historical_prices")
         .select("*")
@@ -62,25 +65,34 @@ export const BacktestingPanel = ({
       const divergences = findDivergence(historicalData);
       const confirmedSignals = checkMultipleStochConfirmation(divergences);
 
-      // Calculate performance metrics
-      let totalTrades = confirmedSignals.bullish.length + confirmedSignals.bearish.length;
-      let winningTrades = Math.floor(totalTrades * 0.6); // Simplified for demo
-      let losingTrades = totalTrades - winningTrades;
-      let totalReturn = winningTrades * 2 - losingTrades; // Simplified P&L calculation
-      let profitFactor = winningTrades > 0 ? (winningTrades * 2) / losingTrades : 0;
-      let maxDrawdown = 10; // Simplified for demo
+      // Simulate trades based on signals
+      const trades = simulateTrades(historicalData, confirmedSignals);
+      const metrics = calculatePerformanceMetrics(trades);
+
+      if (!metrics) {
+        toast({
+          title: "No trades generated",
+          description: "The strategy did not generate any trades in the selected period.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const backtestResult = {
         instrument: selectedInstrument,
         timeframe: selectedTimeframe,
         start_date: historicalData[0].timestamp,
         end_date: historicalData[historicalData.length - 1].timestamp,
-        total_trades: totalTrades,
-        winning_trades: winningTrades,
-        losing_trades: losingTrades,
-        profit_factor: profitFactor,
-        total_return: totalReturn,
-        max_drawdown: maxDrawdown,
+        total_trades: metrics.totalTrades,
+        winning_trades: metrics.winningTrades,
+        losing_trades: metrics.losingTrades,
+        profit_factor: metrics.profitFactor,
+        total_return: metrics.totalReturn,
+        max_drawdown: metrics.maxDrawdown,
+        sharpe_ratio: metrics.sharpeRatio,
+        average_win: metrics.averageWin,
+        average_loss: metrics.averageLoss,
+        expectancy: metrics.expectancy,
       };
 
       // Store results in Supabase
@@ -115,6 +127,61 @@ export const BacktestingPanel = ({
     }
   };
 
+  const simulateTrades = (historicalData: any[], signals: any) => {
+    const trades = [];
+    let position = null;
+
+    for (let i = 0; i < historicalData.length; i++) {
+      const candle = historicalData[i];
+      
+      // Check for entry signals
+      const bullishSignal = signals.bullish.find(s => s.time === candle.timestamp);
+      const bearishSignal = signals.bearish.find(s => s.time === candle.timestamp);
+
+      if (!position && bullishSignal) {
+        position = {
+          type: 'long',
+          entryPrice: candle.close,
+          entryTime: candle.timestamp
+        };
+      } else if (!position && bearishSignal) {
+        position = {
+          type: 'short',
+          entryPrice: candle.close,
+          entryTime: candle.timestamp
+        };
+      }
+      // Simple exit strategy: close position after opposite signal or fixed bars
+      else if (position) {
+        const barsHeld = i - historicalData.findIndex(d => d.timestamp === position.entryTime);
+        const oppositeSignal = (position.type === 'long' && bearishSignal) || 
+                             (position.type === 'short' && bullishSignal);
+        
+        if (oppositeSignal || barsHeld >= 10) {
+          const exitPrice = candle.close;
+          const pnl = position.type === 'long' 
+            ? exitPrice - position.entryPrice
+            : position.entryPrice - exitPrice;
+          const pnlPercent = (pnl / position.entryPrice) * 100;
+
+          trades.push({
+            entryTime: position.entryTime,
+            exitTime: candle.timestamp,
+            entryPrice: position.entryPrice,
+            exitPrice: exitPrice,
+            type: position.type,
+            pnl,
+            pnlPercent
+          });
+
+          position = null;
+        }
+      }
+    }
+
+    return trades;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -146,6 +213,8 @@ export const BacktestingPanel = ({
                 <TableHead>Profit Factor</TableHead>
                 <TableHead>Total Return</TableHead>
                 <TableHead>Max Drawdown</TableHead>
+                <TableHead>Sharpe Ratio</TableHead>
+                <TableHead>Expectancy</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -157,9 +226,11 @@ export const BacktestingPanel = ({
                   <TableCell>
                     {((result.winning_trades / result.total_trades) * 100).toFixed(1)}%
                   </TableCell>
-                  <TableCell>{result.profit_factor.toFixed(2)}</TableCell>
+                  <TableCell>{result.profit_factor?.toFixed(2) || 'N/A'}</TableCell>
                   <TableCell>{result.total_return.toFixed(2)}%</TableCell>
-                  <TableCell>{result.max_drawdown.toFixed(2)}%</TableCell>
+                  <TableCell>{result.max_drawdown?.toFixed(2)}%</TableCell>
+                  <TableCell>{result.sharpe_ratio?.toFixed(2) || 'N/A'}</TableCell>
+                  <TableCell>{result.expectancy?.toFixed(2) || 'N/A'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
