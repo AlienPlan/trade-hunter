@@ -1,8 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TradingScanner } from "@/components/TradingScanner";
 import { TradingViewWidget } from "@/components/TradingViewWidget";
+import { useState } from "react";
 
 const Index = () => {
+  const [selectedTimeframe, setSelectedTimeframe] = useState("1d");
+  const [selectedSymbol, setSelectedSymbol] = useState("CME:ES1!");
+
+  const handleTimeframeChange = (timeframe: string) => {
+    setSelectedTimeframe(timeframe);
+  };
+
+  const handleSymbolChange = (symbol: string) => {
+    setSelectedSymbol(symbol);
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-8">
       <Card>
@@ -13,7 +25,7 @@ const Index = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TradingViewWidget />
+          <TradingViewWidget timeframe={selectedTimeframe} symbol={selectedSymbol} />
         </CardContent>
       </Card>
 
@@ -25,7 +37,10 @@ const Index = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TradingScanner />
+          <TradingScanner 
+            onTimeframeChange={handleTimeframeChange}
+            onSymbolChange={handleSymbolChange}
+          />
         </CardContent>
       </Card>
     </div>
