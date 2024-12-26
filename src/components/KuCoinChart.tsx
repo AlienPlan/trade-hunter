@@ -1,28 +1,28 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Line,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { StochasticChart } from "./charts/StochasticChart";
+import { PriceVolumeChart } from "./charts/PriceVolumeChart";
 import { useToast } from "@/hooks/use-toast";
+import { findDivergence, checkMultipleStochConfirmation } from "@/utils/divergenceUtils";
+import { DivergenceAlerts } from "./DivergenceAlerts";
 
 interface KuCoinChartProps {
   symbol?: string;
   timeframe?: string;
 }
 
-export const KuCoinChart = ({ symbol = "BTC-USDT", timeframe = "1h" }: KuCoinChartProps) => {
+export const KuCoinChart = ({ 
+  symbol = "BTC-USDT", 
+  timeframe = "1h" 
+}: KuCoinChartProps) => {
   const [data, setData] = useState<any[]>([]);
   const { toast } = useToast();
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
+  const [divergenceSignals, setDivergenceSignals] = useState({
+    bullish: [],
+    bearish: []
+  });
 
   useEffect(() => {
     const connectWebSocket = async () => {
@@ -40,7 +40,24 @@ export const KuCoinChart = ({ symbol = "BTC-USDT", timeframe = "1h" }: KuCoinCha
                 timestamp: new Date(message.data.time).toLocaleTimeString(),
                 price: parseFloat(message.data.price),
                 volume: parseFloat(message.data.size),
-              }].slice(-100); // Keep last 100 data points
+                high: parseFloat(message.data.high || message.data.price),
+                low: parseFloat(message.data.low || message.data.price),
+                close: parseFloat(message.data.price),
+                stoch9_k: 0, // Will be calculated
+                stoch9_d: 0,
+                stoch14_k: 0,
+                stoch14_d: 0,
+                stoch40_k: 0,
+                stoch40_d: 0,
+                stoch60_k: 0,
+                stoch60_d: 0
+              }].slice(-100);
+
+              // Calculate divergences
+              const signals = findDivergence(newData);
+              const confirmedSignals = checkMultipleStochConfirmation(signals);
+              setDivergenceSignals(confirmedSignals);
+
               return newData;
             });
           }
@@ -77,50 +94,13 @@ export const KuCoinChart = ({ symbol = "BTC-USDT", timeframe = "1h" }: KuCoinCha
 
   return (
     <Card className="p-4">
-      <div className="h-[600px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            data={data}
-            margin={{
-              top: 20,
-              right: 30,
-              left: 20,
-              bottom: 5,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="timestamp"
-              label={{ value: "Time", position: "insideBottom", offset: -5 }}
-            />
-            <YAxis
-              yAxisId="left"
-              label={{ value: "Price", angle: -90, position: "insideLeft" }}
-            />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              label={{ value: "Volume", angle: 90, position: "insideRight" }}
-            />
-            <Tooltip />
-            <Legend />
-            <Bar
-              yAxisId="right"
-              dataKey="volume"
-              fill="#8884d8"
-              opacity={0.3}
-              name="Volume"
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="price"
-              stroke="#ff7300"
-              name="Price"
-              dot={false}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
+      <div className="space-y-4">
+        <PriceVolumeChart data={data} />
+        <StochasticChart data={data} />
+        <DivergenceAlerts
+          bullishSignals={divergenceSignals.bullish}
+          bearishSignals={divergenceSignals.bearish}
+        />
       </div>
     </Card>
   );

@@ -69,6 +69,14 @@ export type Database = {
           instrument: string
           low: number
           open: number
+          stoch14_d: number | null
+          stoch14_k: number | null
+          stoch40_d: number | null
+          stoch40_k: number | null
+          stoch60_d: number | null
+          stoch60_k: number | null
+          stoch9_d: number | null
+          stoch9_k: number | null
           timeframe: string
           timestamp: string
           volume: number | null
@@ -81,6 +89,14 @@ export type Database = {
           instrument: string
           low: number
           open: number
+          stoch14_d?: number | null
+          stoch14_k?: number | null
+          stoch40_d?: number | null
+          stoch40_k?: number | null
+          stoch60_d?: number | null
+          stoch60_k?: number | null
+          stoch9_d?: number | null
+          stoch9_k?: number | null
           timeframe: string
           timestamp: string
           volume?: number | null
@@ -93,6 +109,14 @@ export type Database = {
           instrument?: string
           low?: number
           open?: number
+          stoch14_d?: number | null
+          stoch14_k?: number | null
+          stoch40_d?: number | null
+          stoch40_k?: number | null
+          stoch60_d?: number | null
+          stoch60_k?: number | null
+          stoch9_d?: number | null
+          stoch9_k?: number | null
           timeframe?: string
           timestamp?: string
           volume?: number | null
