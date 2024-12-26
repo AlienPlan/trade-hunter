@@ -11,23 +11,34 @@ const AuthPage = () => {
   const [telegramNotifications, setTelegramNotifications] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLogin, setIsLogin] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Logged in successfully!",
-      });
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        toast({
+          title: "Success",
+          description: "Logged in successfully!",
+        });
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        if (error) throw error;
+        toast({
+          title: "Success",
+          description: "Registration successful! Please check your email to verify your account.",
+        });
+      }
       
       navigate("/");
     } catch (error: any) {
@@ -42,9 +53,11 @@ const AuthPage = () => {
   return (
     <div className="container mx-auto max-w-md p-4 space-y-8">
       <div className="bg-card p-8 rounded-lg shadow-lg">
-        <h1 className="text-2xl font-bold mb-6 text-center">Trade Hunter Login</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center">
+          Trade Hunter {isLogin ? "Login" : "Register"}
+        </h1>
         
-        <form onSubmit={handleLogin} className="space-y-4 mb-8">
+        <form onSubmit={handleAuth} className="space-y-4 mb-8">
           <div className="space-y-2">
             <Input
               type="email"
@@ -64,8 +77,17 @@ const AuthPage = () => {
             />
           </div>
           <Button type="submit" className="w-full">
-            Login
+            {isLogin ? "Login" : "Register"}
           </Button>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-sm text-blue-500 hover:underline"
+            >
+              {isLogin ? "Need an account? Register" : "Already have an account? Login"}
+            </button>
+          </div>
         </form>
 
         <div className="border-t pt-6">
