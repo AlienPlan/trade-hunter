@@ -1,104 +1,72 @@
-import { useEffect } from 'react';
-
-declare global {
-  interface Window {
-    TradingView: any;
-  }
-}
+import { memo, useEffect, useRef } from 'react';
 
 interface TradingViewWidgetProps {
   timeframe?: string;
   symbol?: string;
 }
 
-export const TradingViewWidget = ({ timeframe = "D", symbol = "CME:ES1!" }: TradingViewWidgetProps) => {
+const TradingViewWidget = ({ timeframe = "15", symbol = "COMEX:GC1!" }: TradingViewWidgetProps) => {
+  const container = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    // Convert our timeframe format to TradingView format
-    const tvTimeframe = convertTimeframe(timeframe);
-    
-    // Create the script element
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    script.onload = () => {
-      if (window.TradingView) {
-        new window.TradingView.widget({
-          width: '100%',
-          height: 600,
-          symbol: symbol,
-          interval: tvTimeframe,
-          timezone: "Etc/UTC",
-          theme: "dark",
-          style: "1",
-          locale: "en",
-          toolbar_bg: "#f1f3f6",
-          enable_publishing: false,
-          allow_symbol_change: true,
-          studies: [
-            "STD;Stochastic RSI@tv-basicstudies", // Default Stochastic RSI
-            "STD;Stochastic@tv-basicstudies", // Default Stochastic (14,3,3)
-            {
-              id: "STD;Stochastic",
-              inputs: { 
-                "%k": 60,
-                "%d": 10,
-                "smooth": 3
-              }
-            },
-            {
-              id: "STD;Stochastic",
-              inputs: { 
-                "%k": 40,
-                "%d": 4,
-                "smooth": 3
-              }
-            },
-            {
-              id: "STD;Stochastic",
-              inputs: { 
-                "%k": 9,
-                "%d": 3,
-                "smooth": 3
-              }
-            }
-          ],
-          container_id: "tradingview_chart"
-        });
-      }
-    };
-    document.head.appendChild(script);
+    if (container.current) {
+      const script = document.createElement("script");
+      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+      script.type = "text/javascript";
+      script.async = true;
+      script.innerHTML = JSON.stringify({
+        autosize: true,
+        symbol: symbol,
+        interval: timeframe,
+        timezone: "America/Toronto",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        withdateranges: true,
+        hide_side_toolbar: false,
+        allow_symbol_change: true,
+        details: true,
+        calendar: false,
+        studies: [
+          "STD;Stochastic"
+        ],
+        support_host: "https://www.tradingview.com"
+      });
+      
+      // Clean up previous script if it exists
+      container.current.innerHTML = '';
+      
+      // Create widget container
+      const widgetContainer = document.createElement("div");
+      widgetContainer.className = "tradingview-widget-container__widget";
+      widgetContainer.style.height = "calc(100% - 32px)";
+      widgetContainer.style.width = "100%";
+      
+      // Create copyright element
+      const copyright = document.createElement("div");
+      copyright.className = "tradingview-widget-copyright";
+      copyright.innerHTML = '<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a>';
+      
+      // Append elements
+      container.current.appendChild(widgetContainer);
+      container.current.appendChild(copyright);
+      container.current.appendChild(script);
+    }
 
     return () => {
-      // Cleanup
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-      // Clean up the container
-      const container = document.getElementById("tradingview_chart");
-      if (container) {
-        container.innerHTML = '';
+      if (container.current) {
+        container.current.innerHTML = '';
       }
     };
-  }, [timeframe, symbol]); // Re-initialize when timeframe or symbol changes
+  }, [timeframe, symbol]);
 
   return (
-    <div className="w-full">
-      <div id="tradingview_chart" className="w-full" />
-    </div>
+    <div 
+      className="tradingview-widget-container" 
+      ref={container} 
+      style={{ height: "600px", width: "100%" }}
+    />
   );
 };
 
-// Convert our timeframe format to TradingView format
-const convertTimeframe = (timeframe: string): string => {
-  const conversions: { [key: string]: string } = {
-    "3m": "3",
-    "5m": "5",
-    "12m": "15",
-    "25m": "30",
-    "1h": "60",
-    "4h": "240",
-    "1d": "D",
-    "1w": "W"
-  };
-  return conversions[timeframe] || "D"; // Default to daily if timeframe not found
-};
+export default memo(TradingViewWidget);
