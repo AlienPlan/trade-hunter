@@ -124,6 +124,9 @@ const convertSymbolToTradingView = (symbol: string): string => {
   // Extract base symbol (remove any contract month/year)
   const baseSymbol = symbol.replace(/[A-Z]\d{2}$/, '');
   
-  // Return the mapped symbol or construct a default one
-  return symbolMap[baseSymbol] || `CME_MINI:${symbol}1!`;
+  // Return the mapped symbol or the symbol itself if it's already in the correct format
+  if (symbol.includes(':')) {
+    return symbol;
+  }
+  return symbolMap[baseSymbol] || `CME_MINI:${baseSymbol}1!`;
 };
