@@ -111,14 +111,19 @@ const convertSymbolToTradingView = (symbol: string): string => {
     "ES": "CME_MINI:ES1!", // E-mini S&P 500
     "MES": "CME_MICRO:MES1!", // Micro E-mini S&P 500
     "NQ": "CME_MINI:NQ1!", // E-mini NASDAQ-100
+    "MNQ": "CME_MICRO:MNQ1!", // Micro E-mini NASDAQ-100
     "GC": "COMEX:GC1!", // Gold Futures
+    "MGC": "COMEX_MINI:MGC1!", // Micro Gold Futures
     "SI": "COMEX:SI1!", // Silver Futures
     "CL": "NYMEX:CL1!", // Crude Oil Futures
+    "MCL": "NYMEX_MINI:MCL1!", // Micro Crude Oil Futures
     "BTC": "CME:BTC1!", // Bitcoin Futures
+    "MBT": "CME_MICRO:MBT1!", // Micro Bitcoin Futures
   };
 
   // Extract base symbol (remove any contract month/year)
   const baseSymbol = symbol.replace(/[A-Z]\d{2}$/, '');
   
-  return symbolMap[baseSymbol] || `CME_MINI:${symbol}1!`; // Default to CME_MINI if not found
+  // Return the mapped symbol or construct a default one
+  return symbolMap[baseSymbol] || `CME_MINI:${symbol}1!`;
 };
