@@ -19,7 +19,6 @@ export const TradingViewWidget = ({ timeframe = "D", symbol = "ES1!" }: TradingV
     // Convert symbol to TradingView futures format
     const tvSymbol = convertSymbolToTradingView(symbol);
     
-    // Create the script element
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/tv.js';
     script.async = true;
@@ -92,10 +91,10 @@ export const TradingViewWidget = ({ timeframe = "D", symbol = "ES1!" }: TradingV
 // Convert our timeframe format to TradingView format
 const convertTimeframe = (timeframe: string): string => {
   const conversions: { [key: string]: string } = {
-    "3m": "3",
-    "5m": "5",
-    "12m": "15",
-    "25m": "30",
+    "3m": "D", // Defaulting to daily for unsupported timeframes
+    "5m": "D",
+    "12m": "D",
+    "25m": "D",
     "1h": "60",
     "4h": "240",
     "1d": "D",
