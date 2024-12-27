@@ -2,6 +2,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import html2canvas from "html2canvas";
 
 interface DivergenceSignal {
   time: number;
@@ -11,10 +12,30 @@ interface DivergenceSignal {
 interface DivergenceAlertsProps {
   bullishSignals: DivergenceSignal[];
   bearishSignals: DivergenceSignal[];
+  instrument?: string;
+  timeframe?: string;
 }
 
-export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceAlertsProps) => {
+export const DivergenceAlerts = ({ 
+  bullishSignals, 
+  bearishSignals, 
+  instrument = "ES1!", 
+  timeframe = "1h" 
+}: DivergenceAlertsProps) => {
   const { toast } = useToast();
+
+  const captureChart = async () => {
+    try {
+      const chartElement = document.getElementById("tradingview_chart");
+      if (!chartElement) return null;
+      
+      const canvas = await html2canvas(chartElement);
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.error("Error capturing chart:", error);
+      return null;
+    }
+  };
 
   const sendEmailNotification = async (title: string, description: string) => {
     const { data: profile } = await supabase
@@ -25,6 +46,8 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
     if (!profile?.notification_enabled || !profile?.email) return;
 
     try {
+      const chartImage = await captureChart();
+      
       const response = await fetch("/api/send-email", {
         method: "POST",
         headers: {
@@ -32,8 +55,19 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
         },
         body: JSON.stringify({
           to: profile.email,
-          subject: title,
-          text: description,
+          subject: `${title} - ${instrument} ${timeframe}`,
+          text: `
+            ${description}
+            Instrument: ${instrument}
+            Timeframe: ${timeframe}
+            Time: ${new Date().toLocaleString()}
+          `,
+          attachments: chartImage ? [{
+            content: chartImage.split('base64,')[1],
+            filename: 'chart.png',
+            type: 'image/png',
+            disposition: 'attachment'
+          }] : []
         }),
       });
 
@@ -82,8 +116,8 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
   useEffect(() => {
     const showSignalToasts = async () => {
       for (const signal of bullishSignals) {
-        const title = "Bullish Divergence Detected";
-        const description = `${signal.confirmations} Stochastic indicators confirm this signal`;
+        const title = `Bullish Divergence Detected on ${instrument}`;
+        const description = `${signal.confirmations} Stochastic indicators confirm this signal on ${timeframe} timeframe`;
         
         toast({
           title,
@@ -95,8 +129,8 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
       }
 
       for (const signal of bearishSignals) {
-        const title = "Bearish Divergence Detected";
-        const description = `${signal.confirmations} Stochastic indicators confirm this signal`;
+        const title = `Bearish Divergence Detected on ${instrument}`;
+        const description = `${signal.confirmations} Stochastic indicators confirm this signal on ${timeframe} timeframe`;
         
         toast({
           title,
@@ -110,7 +144,7 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
     };
 
     showSignalToasts();
-  }, [bullishSignals, bearishSignals, toast]);
+  }, [bullishSignals, bearishSignals, toast, instrument, timeframe]);
 
   if (bullishSignals.length === 0 && bearishSignals.length === 0) {
     return null;
@@ -120,18 +154,18 @@ export const DivergenceAlerts = ({ bullishSignals, bearishSignals }: DivergenceA
     <div className="space-y-4">
       {bullishSignals.map((signal, index) => (
         <Alert key={`bullish-${index}`}>
-          <AlertTitle>Bullish Divergence Detected</AlertTitle>
+          <AlertTitle>Bullish Divergence Detected on {instrument}</AlertTitle>
           <AlertDescription>
-            Confirmed by {signal.confirmations} Stochastic indicators at {new Date(signal.time).toLocaleString()}
+            Confirmed by {signal.confirmations} Stochastic indicators at {new Date(signal.time).toLocaleString()} on {timeframe} timeframe
           </AlertDescription>
         </Alert>
       ))}
 
       {bearishSignals.map((signal, index) => (
         <Alert key={`bearish-${index}`} variant="destructive">
-          <AlertTitle>Bearish Divergence Detected</AlertTitle>
+          <AlertTitle>Bearish Divergence Detected on {instrument}</AlertTitle>
           <AlertDescription>
-            Confirmed by {signal.confirmations} Stochastic indicators at {new Date(signal.time).toLocaleString()}
+            Confirmed by {signal.confirmations} Stochastic indicators at {new Date(signal.time).toLocaleString()} on {timeframe} timeframe
           </AlertDescription>
         </Alert>
       ))}
